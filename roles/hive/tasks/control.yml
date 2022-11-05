@@ -1,0 +1,29 @@
+- name: Start TheHive
+  service:
+    name: "thehive"
+    state: started
+  tags: [start]
+
+- name: Stop TheHive
+  service:
+    name: "thehive"
+    state: stopped
+  tags: [stop]
+
+- name: Restart TheHive
+  service:
+    name: "thehive"
+    state: restarted
+  tags: [restart]
+
+- name: Disable TheHive
+  service:
+    name: "thehive"
+    enabled: no
+  tags: [disable]
+
+- name: Enable TheHive
+  service:
+    name: "thehive"
+    enabled: yes
+  tags: [enable]

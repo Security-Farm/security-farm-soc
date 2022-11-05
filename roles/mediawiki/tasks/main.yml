@@ -1,0 +1,21 @@
+---
+- name: Install
+  include_tasks:
+    file: install.yml
+    apply:
+      tags: [install]
+  tags: [install]
+
+- name: Configure
+  include_tasks:
+    file: configure.yml
+    apply:
+      tags: [configure]
+  tags: [configure]
+
+- name: Apache
+  include_tasks:
+    file: apache.yml
+    apply:
+      tags: [apache]
+  tags: [apache]

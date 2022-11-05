@@ -1,0 +1,42 @@
+---
+# ansible-playbook --ask-pass build-security-farm-soc.yml -e @roles/security_farm_soc/vars/security_farm_soc_vars.yml
+- name: Security Farm
+  hosts: "{{ security_farm_soc_hosts }}"
+  become: yes
+
+  pre_tasks:
+    - name: Check For Variables
+      fail:
+        msg: "Please pass the vars file with -e @/roles/security_farm_soc/vars/security_farm_soc_vars.yml"
+      when: security_farm_soc_vars_exist is undefined
+
+  tasks:
+    - name: Install system_base
+      include_role:
+        name: system_base
+      tags: [system_base]
+
+    - name: Install hive
+      include_role:
+        name: hive
+      tags: [hive]
+
+    - name: Install mediawiki
+      include_role:
+        name: mediawiki
+      tags: [mediawiki]
+
+    - name: Install request_tracker
+      include_role:
+        name: request_tracker
+      tags: [request_tracker]
+
+    - name: Install rocket_chat
+      include_role:
+        name: rocket_chat
+      tags: [rocket_chat]
+
+    - name: Configure security_farm_soc
+      include_role:
+        name: security_farm_soc
+      tags: [security_farm_soc]

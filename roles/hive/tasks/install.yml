@@ -1,0 +1,74 @@
+---
+- name: Install java-1.8.0-openjdk-headless.x86_64
+  dnf:
+    name: java-1.8.0-openjdk-headless.x86_64
+    state: present
+  register: install_java
+
+- name: Add Java_Home Environmental Variable
+  ansible.builtin.lineinfile:
+    path: /etc/environment
+    line: 'JAVA_HOME="/usr/lib/jvm/jre-1.8.0"'
+  register: java_home
+
+- name: Add Cassandra Repository
+  yum_repository:
+    name: cassandra
+    description: Apache Cassandra
+    baseurl: https://downloads.apache.org/cassandra/redhat/311x/
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://downloads.apache.org/cassandra/KEYS
+    enabled: yes
+
+- name: Install Cassandra and Python2
+  dnf:
+    name:
+      - cassandra
+      - python2
+    state: present
+    update_cache: yes
+
+- name: Add Hive PGP Key
+  ansible.builtin.rpm_key:
+    key: https://raw.githubusercontent.com/TheHive-Project/TheHive/master/PGP-PUBLIC-KEY
+    state: present
+
+- name: Add Hive Repository
+  yum_repository:
+    name: thehive-project
+    description: TheHive-Project RPM repository
+    baseurl: https://rpm.thehive-project.org/release/noarch
+    gpgcheck: yes
+    enabled: yes
+
+- name: Install thehive4
+  dnf:
+    name: thehive4
+    state: present
+    update_cache: yes
+
+- name: Install Apache
+  dnf:
+    name:
+      - httpd
+      - mod_ssl
+    state: present
+  register: install_apache
+
+- name: Check if SSL certificate was created
+  stat:
+    path: /etc/pki/tls/private/localhost.key
+  register: ssl_key
+
+- name: Generate self-signed SSL certificate for Apache # noqa 503
+  command: >2
+    openssl req
+    -x509
+    -nodes
+    -days 3650
+    -newkey rsa:2048
+    -keyout /etc/pki/tls/private/localhost.key
+    -out /etc/pki/tls/certs/localhost.crt
+    -subj "/C=US/ST=Colorado/L=Colorado Springs/O=Security Farm/CN=*.soc.lan"
+  when: not ssl_key.stat.exists

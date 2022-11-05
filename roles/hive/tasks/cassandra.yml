@@ -1,0 +1,42 @@
+---
+- name: Start Cassandra
+  service:
+    name: "cassandra"
+    state: started
+    enabled: yes
+
+- name: Pause for Cassandra to start
+  pause:
+    seconds: 15
+
+- name: Check Cluster Name # noqa 301
+  command: 'cqlsh -e "DESC CLUSTER"'
+  register: cassandra_cluster
+
+- name: Set Cluster Name
+  command: cqlsh -e "UPDATE system.local SET cluster_name='{{ hive_cql_cluster_name }}' WHERE key='local'"
+  when: cassandra_cluster.stdout is search("Test Cluster")
+  register: cassandra_cluster_name
+
+- name: Flush # noqa 503
+  command: "nodetool flush"
+  when: cassandra_cluster_name.changed
+
+- name: Cassandra Configuration
+  template:
+    src: cassandra.yaml.j2
+    #According to the documentation this should have been /etc/cassandra/cassandra.yaml
+    dest: "/etc/cassandra/conf/cassandra.yaml"
+    owner: root
+    group: root
+    mode: '644'
+  register: cassandra_configuration
+
+- name: Restart Cassandra # noqa 503
+  service:
+    name: "cassandra"
+    state: restarted
+  when: cassandra_configuration.changed
+
+# To secure cassandra see https://docs.thehive-project.org/thehive/operations/cassandra-security/
+# To cluster see https://docs.thehive-project.org/thehive/installation-and-configuration/architecture/3_nodes_cluster/

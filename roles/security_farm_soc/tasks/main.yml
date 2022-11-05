@@ -1,0 +1,7 @@
+---
+- name: Configure
+  include_tasks:
+    file: configure.yml
+    apply:
+      tags: [configure]
+  tags: [configure]

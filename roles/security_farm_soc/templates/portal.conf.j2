@@ -1,0 +1,24 @@
+<VirtualHost *:80>
+   ServerName {{ portal_hostname }}.{{ security_farm_soc_domain}}
+   Redirect permanent / https://{{ portal_hostname }}.{{ security_farm_soc_domain}}/
+</VirtualHost>
+
+<VirtualHost *:443>
+
+ServerName {{ portal_hostname }}.{{ security_farm_soc_domain}}
+AddDefaultCharset UTF-8
+
+DocumentRoot "/var/www/portal"
+
+ErrorLog logs/ssl_error_log
+TransferLog logs/ssl_access_log
+LogLevel warn
+
+SSLEngine on
+SSLHonorCipherOrder on
+SSLCipherSuite PROFILE=SYSTEM
+SSLProxyCipherSuite PROFILE=SYSTEM
+SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+
+</VirtualHost>

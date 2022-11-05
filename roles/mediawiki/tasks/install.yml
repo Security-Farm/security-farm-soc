@@ -1,0 +1,159 @@
+# Check https://www.mediawiki.org/wiki/Manual:Running_MediaWiki_on_Red_Hat_Linux
+- name: Disable SELinux
+  ansible.posix.selinux:
+    state: disabled
+  register: selinux_register
+
+- name: Reboot Warning # noqa 503
+  pause:
+    prompt: "Warning: This machine will reboot. Press return to continue. Press Ctrl+c and then \"a\" to abort."
+  when: selinux_register.changed and reboot_protection
+
+- name: Reboot if SELinux is Disabled # noqa 503
+  reboot:
+  when: selinux_register.changed
+
+- name: Use PHP 7.4 # noqa 301
+  command: dnf module enable php:7.4 -y
+
+- name: Install Packages
+  dnf:
+    name:
+      - php
+      - php-mysqlnd
+      - php-gd
+      - php-xml
+      - php-mbstring
+      - php-json
+      - php-intl
+      - php-apcu
+    state: present
+
+- name: Install Apache
+  dnf:
+    name:
+      - httpd
+      - mod_ssl
+    state: present
+  register: install_apache
+
+- name: Check if SSL certificate was created
+  stat:
+    path: /etc/pki/tls/private/localhost.key
+  register: ssl_key
+
+- name: Generate self-signed SSL certificate for Apache # noqa 503
+  command: >2
+    openssl req
+    -x509
+    -nodes
+    -days 3650
+    -newkey rsa:2048
+    -keyout /etc/pki/tls/private/localhost.key
+    -out /etc/pki/tls/certs/localhost.crt
+    -subj "/C=US/ST=Colorado/L=Colorado Springs/O=Security Farm/CN=*.soc.lan"
+  when: not ssl_key.stat.exists
+
+- name: Install Database
+  dnf:
+    name:
+      - mariadb-server
+      - mariadb
+    state: present
+  register: install_database_register
+
+- name: Start MariaDB # noqa 503
+  service:
+    name: "mariadb"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  when: install_database_register.changed
+
+- name: Install pexpect and PyMySQL
+  pip:
+    name:
+      - pexpect
+      - PyMySQL
+
+- name: mysql_secure_installation # noqa 503
+  expect:
+    command: mysql_secure_installation
+    responses:
+      'Enter current password for root': ''
+      'Set root password': 'n'
+      'Remove anonymous users': 'y'
+      'Disallow root login remotely': 'y'
+      'Remove test database': 'y'
+      'Reload privilege tables now': 'y'
+    timeout: 1
+  when: install_database_register.changed
+  register: secure_mariadb
+  failed_when: "'... Failed!' in secure_mariadb.stdout_lines"
+
+- name: Check if MediaWiki has already been downloaded
+  stat:
+    path: /root/mediawiki.tar.gz
+  register: mediawiki_exists
+
+- name: Download MediaWiki
+  ansible.builtin.get_url:
+    url: "https://releases.wikimedia.org/mediawiki/{{ mediawiki_version.split('.')[0] }}.{{ mediawiki_version.split('.')[1] }}/mediawiki-{{ mediawiki_version }}.tar.gz" # noqa 204
+    dest: /root/mediawiki.tar.gz
+    mode: '440'
+  when: not mediawiki_exists.stat.exists
+
+- name: Unarchive MediaWiki
+  ansible.builtin.unarchive:
+    src: /root/mediawiki.tar.gz
+    dest: /root/
+    remote_src: yes
+  when: not mediawiki_exists.stat.exists
+
+- name: Copy mediawiki to /var/www/ # noqa 208
+  copy:
+    src: /root/mediawiki-{{ mediawiki_version }}/
+    dest: /var/www/mediawiki
+    owner: apache
+    group: apache
+    remote_src: yes
+  when: not mediawiki_exists.stat.exists
+
+- name: Create LocalSettings.php
+  template:
+    src: LocalSettings.php.j2
+    dest: /var/www/mediawiki/LocalSettings.php
+    owner: apache
+    group: apache
+    mode: '644'
+  when: not mediawiki_exists.stat.exists
+
+- name: Check if MsUpload has already been downloaded
+  stat:
+    path: /root/msupload.tar.gz
+  register: msupload_exists
+
+- name: Copy over MsUpload
+  ansible.builtin.copy:
+    src: MsUpload-REL1_37-66ed125.tar.gz #1.38 is broken
+    dest: /root/msupload.tar.gz
+    owner: root
+    group: root
+    mode: '440'
+  when: not msupload_exists.stat.exists
+
+- name: Unarchive MsUpload
+  ansible.builtin.unarchive:
+    src: /root/msupload.tar.gz
+    dest: /root/
+    remote_src: yes
+  when: not msupload_exists.stat.exists
+
+- name: Copy MsUpload to /var/www/mediawiki/extensions/ # noqa 208
+  copy:
+    src: /root/MsUpload/
+    dest: /var/www/mediawiki/extensions/MsUpload
+    owner: apache
+    group: apache
+    remote_src: yes
+  when: not msupload_exists.stat.exists

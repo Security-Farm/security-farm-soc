@@ -1,0 +1,85 @@
+---
+- name: Install BIND/Chrony
+  dnf:
+    name:
+      - chrony
+      - bind
+      - bind-utils
+    state: present
+
+- name: Setup named.conf
+  template:
+    src: named.conf.j2
+    dest: /etc/named.conf
+    owner: root
+    group: named
+    mode: '640'
+  register: named_configuration
+
+- name: Enable named, can't start until security_farm_soc.py sets up the zone file. # noqa 503
+  service:
+    name: "named"
+    state: stopped
+    enabled: yes
+  when: named_configuration.changed
+
+- name: Add port 53/udp
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: udp
+    destination_port: "53"
+    jump: ACCEPT
+    action: insert
+  register: iptables_53_result
+
+- name: Save iptables  # noqa 301 503
+  shell: "iptables-save > /etc/sysconfig/iptables"
+  when: iptables_53_result.changed
+
+- name: Copy Portal
+  copy:
+    src: "portal"
+    dest: "/var/www/"
+    owner: apache
+    group: apache
+    mode: '644'
+
+- name: Apache Portal Configuration
+  template:
+    src: portal.conf.j2
+    dest: "/etc/httpd/conf.d/portal.conf"
+    owner: root
+    group: root
+    mode: '644'
+  register: apache_configuration
+
+- name: Restart Apache # noqa 503
+  service:
+    name: "httpd"
+    state: restarted
+    enabled: yes
+  when: apache_configuration.changed
+
+- name: Copy security_farm directory
+  copy:
+    src: "security_farm"
+    dest: "/opt/"
+    owner: root
+    group: root
+    mode: '640'
+
+- name: Copy security_farm_soc.py
+  template:
+    src: "security_farm_soc.py.j2"
+    dest: "/opt/security_farm/security_farm_soc.py"
+    owner: root
+    group: root
+    mode: '770'
+
+- name: Add Alias
+  template:
+    src: "security_farm.sh.j2"
+    dest: "/etc/profile.d/security_farm.sh"
+    owner: root
+    group: root
+    mode: '644'

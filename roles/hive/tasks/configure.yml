@@ -1,0 +1,78 @@
+---
+- name: Hive Configuration
+  template:
+    src: application.conf.j2
+    dest: "/etc/thehive/application.conf"
+    owner: root
+    group: thehive
+    mode: '640'
+  register: hive_configuration
+
+- name: Apache HTTPD Configuration
+  template:
+    src: httpd.conf.j2
+    dest: "/etc/httpd/conf/httpd.conf"
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Apache SSL Configuration
+  template:
+    src: ssl.conf.j2
+    dest: "/etc/httpd/conf.d/ssl.conf"
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Apache Hive Configuration
+  template:
+    src: hive.conf.j2
+    dest: "/etc/httpd/conf.d/hive.conf"
+    owner: root
+    group: root
+    mode: '644'
+  register: apache_configuration
+
+- name: Set httpd_can_network_connect Flag
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+  ignore_errors: yes
+
+- name: Add port 80/tcp
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "80"
+    jump: ACCEPT
+    action: insert
+  register: iptables_80_result
+
+- name: Add port 443/tcp
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "443"
+    jump: ACCEPT
+    action: insert
+  register: iptables_443_result
+
+- name: Save iptables  # noqa 301 503
+  shell: "iptables-save > /etc/sysconfig/iptables"
+  when: iptables_80_result.changed or iptables_443_result.changed
+
+- name: Restart TheHive # noqa 503
+  service:
+    name: "thehive"
+    state: restarted
+    enabled: yes
+  when: hive_configuration.changed
+
+- name: Restart Apache # noqa 503
+  service:
+    name: "httpd"
+    state: restarted
+    enabled: yes
+  when: apache_configuration.changed
+

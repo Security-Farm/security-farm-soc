@@ -1,0 +1,52 @@
+- name: Create mediawiki Database
+  community.mysql.mysql_db:
+    name: "{{ mediawiki_database_name }}"
+    state: present
+  register: create_database
+
+- name: Copy Default Database # noqa 503
+  copy:
+    src: mediawiki.sql.default
+    dest: /root/mediawiki.sql.default
+    owner: root
+    group: root
+    mode: '640'
+  when: create_database.changed
+
+# If you choose not to restore the database look at the bottom
+# of LocalSettings.php for recommended plugins. You will also
+# need to remove that file.
+
+- name: Restore Default Database. admin/P@ssword123 # noqa 503
+  community.mysql.mysql_db:
+    name: "{{ mediawiki_database_name }}"
+    state: import
+    target: /root/mediawiki.sql.default
+  when: create_database.changed
+
+- name: Create mediawiki Database User
+  community.mysql.mysql_user:
+    name: "{{ mediawiki_database_user }}"
+    password: "{{ mediawiki_database_password }}"
+    priv: '{{ mediawiki_database_name }}.*:ALL,GRANT'
+    state: present
+
+- name: Set php post_max_size
+  ansible.builtin.lineinfile:
+    path: /etc/php.ini
+    regexp: '^post_max_size = *'
+    line: post_max_size = 30M
+
+- name: Set php upload_max_filesize
+  ansible.builtin.lineinfile:
+    path: /etc/php.ini
+    regexp: '^upload_max_filesize = *'
+    line: upload_max_filesize = 20M
+
+- name: Copy Wiki Logo
+  copy:
+    src: "wiki_logo.png"
+    dest: "/var/www/mediawiki/resources/assets/wiki_logo.png"
+    owner: apache
+    group: apache
+    mode: '664'

@@ -1,0 +1,4 @@
+---
+system_base_updates: True
+system_base_hostname_protection: False
+reboot_protection: False

@@ -1,0 +1,20 @@
+---
+- name: FQDN Hostname Protection
+  fail:
+    msg: "Warning: Hostname protection on this machine has failed, the expected hostname {{ inventory_hostname }} does not match {{ ansible_facts.fqdn }}."
+  when: (ansible_facts.fqdn != inventory_hostname) and system_base_hostname_protection
+
+- name: Set FQDN Hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+  register: system_base_hostname_result
+  when: (ansible_facts.fqdn != inventory_hostname) and not system_base_hostname_protection
+
+- name: Reboot Warning # noqa 503
+  pause:
+    prompt: "Warning: This machine will reboot. Press return to continue. Press Ctrl+c and then \"a\" to abort."
+  when: system_base_hostname_result.changed and reboot_protection
+
+- name: Reboot # noqa 503
+  reboot:
+  when: system_base_hostname_result.changed

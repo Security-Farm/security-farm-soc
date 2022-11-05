@@ -1,0 +1,20 @@
+request_tracker_vars_exist: Defined
+request_tracker_hosts: {{request_tracker_hosts}}
+request_tracker_hostname: {{request_tracker_hostname}} #eg rt
+request_tracker_domain: {{request_tracker_domain}} #eg soc.lan
+
+reboot_protection: True
+manual_fixdeps: False
+
+#Developed for 5.0.3
+rt_version: 5.0.3
+rt_installation_directory: /opt/rt5/
+
+#RT_SiteConfig.pm
+rt_database_name: {{rt_database_name}} #eg rt5
+rt_database_password: {{rt_database_password}} #eg rtpassword
+rt_database_type: mysql
+rt_database_user: {{rt_database_user}} #eg rt
+rt_log_to_syslog: info
+rt_log_to_stderr: warning
+rt_web_port: 443

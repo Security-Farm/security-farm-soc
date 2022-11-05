@@ -1,0 +1,131 @@
+---
+- name: Disable SELinux
+  ansible.posix.selinux:
+    state: disabled
+  register: selinux_register
+
+- name: Reboot Warning # noqa 503
+  pause:
+    prompt: "Warning: This machine will reboot. Press return to continue. Press Ctrl+c and then \"a\" to abort."
+  when: selinux_register.changed and reboot_protection
+
+- name: Reboot if SELinux is Disabled # noqa 503
+  reboot:
+  when: selinux_register.changed
+
+- name: Install EPEL
+  dnf:
+    name: epel-release
+    state: present
+
+- name: Enable PowerTools # noqa 301
+  command: dnf config-manager --set-enabled powertools
+
+- name: Install Packages
+  dnf:
+    name:
+      - patch
+      - tar
+      - which
+      - gcc
+      - gcc-c++
+      - perl-core
+      - perl-App-cpanminus
+      - graphviz
+      - expat-devel
+      - gd-devel
+      - multiwatch
+      - openssl
+      - openssl-devel
+      - w3m
+    state: present
+
+- name: Install Apache
+  dnf:
+    name:
+      - httpd
+      - mod_ssl
+      - mod_fcgid
+    state: present
+  register: install_apache
+
+- name: Check if SSL certificate was created
+  stat:
+    path: /etc/pki/tls/private/localhost.key
+  register: ssl_key
+
+- name: Generate self-signed SSL certificate for Apache # noqa 503
+  command: >2
+    openssl req
+    -x509
+    -nodes
+    -days 3650
+    -newkey rsa:2048
+    -keyout /etc/pki/tls/private/localhost.key
+    -out /etc/pki/tls/certs/localhost.crt
+    -subj "/C=US/ST=Colorado/L=Colorado Springs/O=Security Farm/CN=*.soc.lan"
+  when: not ssl_key.stat.exists
+
+- name: Install Database
+  dnf:
+    name:
+      - mariadb-server
+      - mariadb-connector-c-devel
+    state: present
+  register: install_database_register
+
+- name: Set max allowed packet size for larger attachements
+  template:
+    src: max_allowed_packet.cnf.j2
+    dest: "/etc/my.cnf.d/max_allowed_packet.cnf"
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Start MariaDB # noqa 503
+  service:
+    name: "mariadb"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  when: install_database_register.changed
+
+- name: Install pexpect and PyMySQL
+  pip:
+    name:
+      - pexpect
+      - PyMySQL
+
+- name: mysql_secure_installation # noqa 503
+  expect:
+    command: mysql_secure_installation
+    responses:
+      'Enter current password for root': ''
+      'Set root password': 'n'
+      'Remove anonymous users': 'y'
+      'Disallow root login remotely': 'y'
+      'Remove test database': 'y'
+      'Reload privilege tables now': 'y'
+    timeout: 1
+  when: install_database_register.changed
+  register: secure_mariadb
+  failed_when: "'... Failed!' in secure_mariadb.stdout_lines"
+
+- name: Check if Request Tracker has already been downloaded
+  stat:
+    path: /root/rt.tar.gz
+  register: request_tracker_exists
+
+- name: Download Request Tracker
+  ansible.builtin.get_url:
+    url: "https://download.bestpractical.com/pub/rt/release/rt-{{ rt_version }}.tar.gz"
+    dest: /root/rt.tar.gz
+    mode: '440'
+  when: not request_tracker_exists.stat.exists
+
+- name: Unarchive Request Tracker
+  ansible.builtin.unarchive:
+    src: /root/rt.tar.gz
+    dest: /root/
+    remote_src: yes
+  when: not request_tracker_exists.stat.exists

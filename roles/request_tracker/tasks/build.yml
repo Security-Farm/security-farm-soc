@@ -1,0 +1,88 @@
+---
+- name: Check if RT has been installed
+  stat:
+    path: "{{ rt_installation_directory }}local/"
+  register: rt_installed
+
+- name: Pre-Configure RT
+  shell: >2 # noqa 305
+    PERL="/usr/bin/env -S perl -I{{ rt_installation_directory }}local/lib/perl5"
+    ./configure
+    --prefix={{ rt_installation_directory }}
+    --with-db-type=mysql
+    --with-web-user=apache
+    --with-web-group=apache
+    --with-attachment-store=disk
+    --enable-externalauth
+    --enable-gd
+    --enable-graphviz
+    --enable-gpg
+    --enable-smime
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists
+  register: preconfigure_rt
+
+- name: Preconfiguration Output
+  debug:
+    var: preconfigure_rt.stdout_lines
+  when: not rt_installed.stat.exists
+
+- name: Make Directories # noqa 305
+  shell: make dirs
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists
+  register: make_dirs
+
+- name: Make Dirs Output
+  debug:
+    var: make_dirs.stdout_lines
+  when: not rt_installed.stat.exists
+
+- name: Fixdeps Pause
+  pause:
+    prompt: Manually run fixdeps at this point. Press return to continue. Press Ctrl+c and then "a" to abort.
+  when: not rt_installed.stat.exists and manual_fixdeps
+
+# May need to run fixdeps multiple times, or force install a module with
+# cpanm --force --local-lib-contained={{ rt_installation_directory }}local/ {{modulename}}
+
+# These modules failed on centos stream 8:
+- name: Install GD::Graph # noqa 305
+  shell: "cpanm --notest --local-lib-contained={{ rt_installation_directory }}local/ GD::Graph"
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists and not manual_fixdeps
+# End failed modules
+
+- name: Make Fixdeps - Can take >40m the first time # noqa 305
+  shell: 'make fixdeps RT_FIX_DEPS_CMD="cpanm --local-lib-contained={{ rt_installation_directory }}local/"'
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists and not manual_fixdeps
+  register: make_fixdeps
+  async: 5400
+  poll: 60
+
+- name: Make Fixdeps Output
+  debug:
+    var: make_fixdeps.stdout_lines
+  when: not rt_installed.stat.exists and not manual_fixdeps
+
+- name: Check if Make Install has been run
+  stat:
+    path: "{{ rt_installation_directory }}etc/RT_Config.pm"
+  register: make_install_done
+
+- name: Make Install # noqa 305
+  shell: make install
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not make_install_done.stat.exists
+  register: make_install
+
+- name: Make Install Output
+  debug:
+    var: make_install.stdout_lines
+  when: not make_install_done.stat.exists

@@ -1,0 +1,164 @@
+# Check https://github.com/RocketChat/Rocket.Chat/releases
+# Mongo 5.0 requires avx instruction set
+
+- name: Add MongoDB Repository
+  yum_repository:
+    name: "mongodb-org-{{ mongodb_version }}"
+    description: MongoDB
+    baseurl: "https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/{{ mongodb_version }}/x86_64/"
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: "https://www.mongodb.org/static/pgp/server-{{ mongodb_version }}.asc"
+    enabled: yes
+
+- name: Install EPEL
+  dnf:
+    name: epel-release
+    state: present
+
+- name: Install Packages
+  dnf:
+    name:
+      - gcc-c++
+      - make
+      - mongodb-org
+      - nodejs
+      - GraphicsMagick
+    state: present
+
+- name: Install Apache
+  dnf:
+    name:
+      - httpd
+      - mod_ssl
+    state: present
+  register: install_apache
+
+- name: Check if SSL certificate was created
+  stat:
+    path: /etc/pki/tls/private/localhost.key
+  register: ssl_key
+
+- name: Generate self-signed SSL certificate for Apache # noqa 503
+  command: >2
+    openssl req
+    -x509
+    -nodes
+    -days 3650
+    -newkey rsa:2048
+    -keyout /etc/pki/tls/private/localhost.key
+    -out /etc/pki/tls/certs/localhost.crt
+    -subj "/C=US/ST=Colorado/L=Colorado Springs/O=Security Farm/CN=*.soc.lan"
+  when: not ssl_key.stat.exists
+
+- name: Install inherits
+  community.general.npm:
+    name: inherits
+    global: true
+
+- name: Install n
+  community.general.npm:
+    name: n
+    global: true
+
+- name: Check node.js Versions # noqa 301
+  command: /usr/local/bin/n ls
+  register: n_versions
+
+- name: "Install node.js version {{ node_js_version }}"
+  command: "/usr/local/bin/n {{ node_js_version }}"
+  when: n_versions is not search(node_js_version)
+
+- name: Mongod Configuration
+  template:
+    src: mongod.conf.j2
+    dest: "/etc/mongod.conf"
+    owner: root
+    group: root
+    mode: '644'
+  register: mongo_configuration
+
+- name: Restart mongod # noqa 503
+  service:
+    name: "mongod"
+    state: restarted
+    enabled: yes
+  when: mongo_configuration.changed
+
+- name: Pause for Mongod to start
+  pause:
+    seconds: 15
+  when: mongo_configuration.changed
+
+- name: Initiate Replication # noqa 503
+  command: 'mongo --eval "printjson(rs.initiate())"'
+  when: mongo_configuration.changed
+
+- name: Check if rocket has already been downloaded
+  stat:
+    path: /root/rocket.chat.tgz
+  register: rocket_chat_exists
+
+- name: Download Rocket Chat
+  ansible.builtin.get_url:
+    url: "https://releases.rocket.chat/{{ rocket_version }}/download"
+    dest: /root/rocket.chat.tgz
+    mode: '440'
+  when: not rocket_chat_exists.stat.exists
+
+- name: Unarchive Rocket Chat
+  ansible.builtin.unarchive:
+    src: /root/rocket.chat.tgz
+    dest: /root/
+    remote_src: yes
+  when: not rocket_chat_exists.stat.exists
+
+- name: Move Rocket Chat to /opt/rocket.chat/
+  command: mv /root/bundle /opt/rocket.chat
+  when: not rocket_chat_exists.stat.exists
+
+- name: Install Rocket Chat
+  community.general.npm:
+    path: /opt/rocket.chat/programs/server
+    unsafe_perm: yes
+
+- name: Rocket User
+  user:
+    name: rocketchat
+    state: present
+    shell: /usr/bin/false
+    system: yes
+    password_lock: yes
+
+- name: Change Rocket Chat User
+  ansible.builtin.file:
+    path: /opt/rocket.chat
+    state: directory
+    recurse: yes
+    owner: rocketchat
+    group: rocketchat
+
+- name: Create Files Directory
+  file:
+    path: /opt/rocket.chat/files/
+    owner: rocketchat
+    group: rocketchat
+    mode: '750'
+    state: directory
+
+- name: Rocketchat Service
+  template:
+    src: rocketchat.service.j2
+    dest: "/usr/lib/systemd/system/rocketchat.service"
+    owner: root
+    group: root
+    mode: '640'
+  register: rocketchat_service
+
+- name: Start Rocket Chat # noqa 503
+  service:
+    name: "rocketchat"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  when: rocketchat_service.changed

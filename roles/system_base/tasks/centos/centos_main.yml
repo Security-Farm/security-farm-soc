@@ -1,0 +1,69 @@
+---
+- name: Set Hostname
+  include_tasks:
+    file: centos_hostname.yml
+    apply:
+      tags: [hostname]
+  tags: [hostname]
+
+- name: Install iptables
+  include_tasks:
+    file: centos_firewall.yml
+    apply:
+      tags: [firewall]
+  tags: [firewall]
+
+- name: CentOS 7
+  block:
+    - name: Baseline Packages
+      include_tasks:
+        file: centos_7_baseline.yml
+        apply:
+          tags: [baseline]
+      tags: [baseline]
+    - name: Automatic Updates
+      include_tasks:
+        file: centos_7_updates.yml
+        apply:
+          tags: [updates]
+      tags: [updates]
+  when: ansible_facts.distribution_major_version == "7"
+
+- name: CentOS 8
+  block:
+    - name: Baseline Packages
+      include_tasks:
+        file: centos_8_baseline.yml
+        apply:
+          tags: [baseline]
+      tags: [baseline]
+    - name: Automatic Updates
+      include_tasks:
+        file: centos_8_updates.yml
+        apply:
+          tags: [updates]
+      tags: [updates]
+  when: ansible_facts.distribution_major_version == "8"
+
+- name: CentOS 9
+  block:
+    - name: Baseline Packages
+      include_tasks:
+        file: centos_9_baseline.yml
+        apply:
+          tags: [baseline]
+      tags: [baseline]
+    - name: Automatic Updates
+      include_tasks:
+        file: centos_9_updates.yml
+        apply:
+          tags: [updates]
+      tags: [updates]
+  when: ansible_facts.distribution_major_version == "9"
+
+# - name: Add Users
+#   include_tasks:
+#     file: centos_users.yml
+#     apply:
+#       tags: [users]
+#   tags: [users]

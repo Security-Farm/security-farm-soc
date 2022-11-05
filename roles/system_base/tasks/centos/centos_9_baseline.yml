@@ -1,0 +1,64 @@
+# - name: Check Crypto Policy
+#   command: update-crypto-policies --show
+#   register: crypto_policies
+
+# - name: Allow SHA1 GPG keys for older repositories
+#   command: update-crypto-policies --set DEFAULT:SHA1
+#   #Undo with `update-crypto-policies --set DEFAULT:NO-SHA1`
+#   when: crypto_policies is not search("DEFAULT:SHA1")
+#   register: crypto_policy_change
+
+# - name: Reboot Warning
+#   pause:
+#     prompt: "Warning: This machine will reboot. Press return to continue. Press Ctrl+c and then \"a\" to abort."
+#   when: crypto_policy_change.changed and reboot_protection
+
+# - name: Reboot After Updating Crypto Policy
+#   reboot:
+#   when: crypto_policy_change.changed
+
+- name: Set DNF fastest mirror
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/dnf.conf
+    regexp: '^fastestmirror='
+    line: fastestmirror=1
+
+- name: update
+  dnf:
+    name: '*'
+    state: latest # noqa 403
+  when: system_base_updates
+
+- name: Install Remaining Packages
+  dnf:
+    name:
+      - cryptsetup
+      - iotop
+      - lsof
+      - mdadm
+      - net-tools
+      - policycoreutils-python-utils #semanage
+      - pip
+      - tcpdump
+      - traceroute
+      - unzip
+      - vim
+      - wget
+    state: present
+
+- name: Check to see if reboot required
+  shell: dnf needs-restarting -r  # noqa 305
+  args:
+    warn: false
+  register: system_base_restart_result
+  ignore_errors: yes
+  changed_when: false
+
+- name: Reboot Warning
+  pause:
+    prompt: "Warning: This machine will reboot. Press return to continue. Press Ctrl+c and then \"a\" to abort."
+  when: system_base_restart_result.rc == 1 and reboot_protection
+
+- name: Reboot after updates
+  reboot:
+  when: system_base_restart_result.rc == 1

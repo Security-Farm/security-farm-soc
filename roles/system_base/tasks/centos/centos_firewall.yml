@@ -1,0 +1,23 @@
+---
+- name: Stop firewalld
+  service:
+    name: firewalld
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Remove firewalld
+  dnf:
+    name: firewalld
+    state: absent
+
+- name: Install iptables
+  dnf:
+    name: iptables-services
+    state: present
+
+- name: Enable and Start iptables
+  service:
+    name: iptables
+    enabled: yes
+    state: started

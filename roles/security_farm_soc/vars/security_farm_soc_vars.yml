@@ -1,0 +1,63 @@
+# Security Farm-----------------------------
+security_farm_soc_vars_exist: Defined
+security_farm_soc_hosts: &security_farm_soc_hosts security-farm.soc.lan
+portal_hostname: portal
+security_farm_soc_domain: &security_farm_soc_domain soc.lan
+
+# Hive------------------------------------
+hive_vars_exist: True
+
+hive_hosts: *security_farm_soc_hosts
+hive_hostname: hive
+hive_domain: *security_farm_soc_domain
+hive_cql_cluster_name: thp
+hive_cql_keyspace: thehive
+
+
+# MediaWiki--------------------------------
+mediawiki_vars_exist: Defined
+mediawiki_hosts: *security_farm_soc_hosts
+mediawiki_hostname: mediawiki
+mediawiki_domain: *security_farm_soc_domain
+
+## Developed for 1.38.4
+mediawiki_version: 1.38.4
+
+mediawiki_database_name: mediawiki
+mediawiki_database_password: mediawikipassword
+mediawiki_database_user: mediawiki
+
+
+# Request Tracker--------------------------
+request_tracker_vars_exist: Defined
+request_tracker_hosts: *security_farm_soc_hosts
+request_tracker_hostname: rt
+request_tracker_domain: *security_farm_soc_domain
+
+reboot_protection: False
+manual_fixdeps: False
+
+## Developed for 5.0.3
+rt_version: 5.0.3
+rt_installation_directory: /opt/rt5/
+
+## RT_SiteConfig.pm
+rt_database_name: rt5
+rt_database_password: rtpassword
+rt_database_type: mysql
+rt_database_user: rt
+rt_log_to_syslog: info
+rt_log_to_stderr: warning
+rt_web_port: 443
+
+
+# Rocket Chat------------------------------
+rocket_vars_exist: Defined
+rocket_hosts: *security_farm_soc_hosts
+rocket_hostname: rocket
+rocket_domain: *security_farm_soc_domain
+
+## Developed for 5.2.0
+rocket_version: 5.2.0
+mongodb_version: 4.4
+node_js_version: 14.19.3

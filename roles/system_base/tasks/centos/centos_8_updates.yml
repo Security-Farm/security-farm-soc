@@ -1,0 +1,20 @@
+---
+- name: Install Packages
+  dnf:
+    name:
+      - dnf-automatic
+    state: present
+
+- name: Copy dnf-automatic Configuration
+  template:
+    src: automatic.conf.j2
+    dest: "/etc/dnf/automatic.conf"
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Enable dnf-automatic and Start
+  service:
+    name: dnf-automatic.timer
+    enabled: yes
+    state: restarted

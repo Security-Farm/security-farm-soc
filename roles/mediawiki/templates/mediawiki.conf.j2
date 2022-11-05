@@ -1,0 +1,28 @@
+<VirtualHost *:80>
+   ServerName {{ mediawiki_hostname }}.{{ mediawiki_domain }}
+   Redirect permanent / https://{{ mediawiki_hostname }}.{{ mediawiki_domain }}/
+</VirtualHost>
+
+<VirtualHost *:443>
+
+ServerName {{ mediawiki_hostname }}.{{ mediawiki_domain }}
+AddDefaultCharset UTF-8
+
+DocumentRoot "/var/www/mediawiki"
+
+<Directory "/var/www/mediawiki">
+DirectoryIndex index.html index.html.var index.php
+</Directory>
+
+ErrorLog logs/ssl_error_log
+TransferLog logs/ssl_access_log
+LogLevel warn
+
+SSLEngine on
+SSLHonorCipherOrder on
+SSLCipherSuite PROFILE=SYSTEM
+SSLProxyCipherSuite PROFILE=SYSTEM
+SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+
+</VirtualHost> 

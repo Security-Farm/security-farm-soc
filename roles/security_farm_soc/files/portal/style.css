@@ -1,0 +1,86 @@
+/* CSS Document */
+/* To adjust the height you must change #content */
+
+p.center {
+	text-align: center;
+}
+body {
+	background-repeat: repeat-y;
+	background-position: center top;
+	background-image: url(images/design/background.jpg);
+	background-color: #3b5024;
+	margin-top: 0;
+}
+
+#main {
+	min-width: 1040px;
+	max-width: 1100px;
+	margin: 0 auto;
+}
+
+#top {
+	height: 123px;
+	background-repeat: repeat-x;
+	background-position: center top;
+	background-image:url(images/design/top.jpg)
+}
+
+.left {
+	float: left;
+}
+
+.right {
+	float: right;
+}
+
+
+#middle {
+	margin-left: auto;
+	margin-right: auto;
+	text-align: center;
+}
+
+#content {
+display: block;
+height: 550px;
+}
+
+#left_side {
+	background-repeat: repeat-y;
+	background-position: center top;
+	background-image:url(images/design/left.jpg);
+	width: 77px;
+	min-height: 550px;
+	height: inherit;
+	float: left;	
+}
+
+#right_side {
+	background-repeat: repeat-y;
+	background-position: center top;
+	background-image:url(images/design/right.jpg);
+	width: 77px;
+	min-height: 550px;
+	height: inherit;
+	float: right;	
+}
+
+
+#table {
+	width: 390px;
+	margin-left: auto;
+	margin-right: auto;	
+}
+
+#table2 {
+	width: 210px;
+	margin-left: auto;
+	margin-right: auto;	
+}
+
+#bottom {
+	height: 40px;
+	background-repeat: repeat-x;
+	background-position: center top;
+	background-image:url(images/design/bottom.jpg);
+}

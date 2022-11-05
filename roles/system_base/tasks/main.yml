@@ -1,0 +1,6 @@
+---
+- name: CentOS
+  include_tasks:
+    file: centos/centos_main.yml
+  tags: [system_base]
+  when: ansible_facts.distribution == 'CentOS'

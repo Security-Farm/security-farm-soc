@@ -1,0 +1,8 @@
+# Update the fulltext index with new ticket data
+*/3 * * * * root {{ rt_installation_directory }}sbin/rt-fulltext-indexer
+
+# Clean old sessions from the database
+0 0 * * * root {{ rt_installation_directory }}sbin/rt-clean-sessions --older 8d
+
+# Needed if external attachments are enabled
+#0 0 * * * root {{ rt_installation_directory }}sbin/rt-externalize-attachments

@@ -1,0 +1,15 @@
+---
+- name: Add Sudo User
+  user:
+    name: "{{ item['key'] }}"
+    state: present
+    groups: wheel
+    shell: /bin/bash
+  loop: "{{ users|dict2items }}"
+
+- name: Add SSH Key
+  authorized_key:
+    user: "{{ item['key'] }}"
+    state: present
+    key: "{{ item['value'] }}"
+  loop: "{{ users|dict2items }}"

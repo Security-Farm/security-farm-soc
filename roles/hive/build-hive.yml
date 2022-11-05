@@ -1,0 +1,21 @@
+---
+- name: Build Hive
+  hosts: "{{ hive_hosts }}"
+  become: yes
+
+  pre_tasks:
+    - name: Check For Variables
+      fail:
+        msg: "Please pass the appropriate vars files with -e @/path/to/file.yml"
+      when: hive_vars_exist is undefined
+
+  tasks:
+    # - name: Install system_base
+    #   include_role:
+    #     name: system_base
+    #   tags: [system_base]
+
+    - name: Install hive
+      include_role:
+        name: hive
+      tags: [hive]

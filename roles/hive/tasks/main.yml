@@ -1,0 +1,26 @@
+---
+- name: Install
+  include_tasks:
+    file: install.yml
+    apply:
+      tags: [install]
+  tags: [install]
+
+- name: Cassandra
+  include_tasks:
+    file: cassandra.yml
+    apply:
+      tags: [cassandra]
+  tags: [cassandra]
+
+- name: Configure
+  include_tasks:
+    file: configure.yml
+    apply:
+      tags: [configure]
+  tags: [configure]
+
+- name: Control
+  include_tasks:
+    file: control.yml
+  tags: [never,control]

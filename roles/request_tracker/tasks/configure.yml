@@ -1,0 +1,72 @@
+---
+- name: Create rt Database
+  community.mysql.mysql_db:
+    name: "{{ rt_database_name }}"
+    state: present
+  register: create_database
+
+- name: Create rt Database User
+  community.mysql.mysql_user:
+    name: "{{ rt_database_user }}"
+    password: "{{ rt_database_password }}"
+    priv: '{{ rt_database_name }}.*:ALL,GRANT'
+    state: present
+
+- name: Setup initial RT_SiteConfig. Needed for rt-setup-database and rt-setup-fulltext-index. # noqa 503
+  template:
+    src: RT_SiteConfig.pm.initial.j2
+    dest: "{{ rt_installation_directory }}etc/RT_SiteConfig.pm"
+    owner: root
+    group: apache
+    mode: '640'
+  when: create_database.changed
+
+- name: Initialize Database # noqa 305 503
+  shell: sbin/rt-setup-database --action=init --skip-create
+  args:
+    chdir: "{{ rt_installation_directory }}"
+  when: create_database.changed
+
+- name: Setup fulltext Indexing # noqa 305 503
+  shell: sbin/rt-setup-fulltext-index --noask --dba root --dba-password ""
+  args:
+    chdir: "{{ rt_installation_directory }}"
+  when: create_database.changed
+
+- name: Setup RT_SiteConfig.pm after rt-setup-fulltext-index.
+  template:
+    src: RT_SiteConfig.pm.j2
+    dest: "{{ rt_installation_directory }}etc/RT_SiteConfig.pm"
+    owner: root
+    group: apache
+    mode: '640'
+
+- name: Create Shredder Directory
+  file:
+    path: "{{ rt_installation_directory }}var/data/RT-Shredder"
+    owner: apache
+    group: apache
+    mode: '770'
+    state: directory
+
+- name: Create Attachments Directory
+  file:
+    path: "{{ rt_installation_directory }}var/attachments"
+    owner: apache
+    group: apache
+    mode: '770'
+    state: directory
+
+- name: Check Permissions # noqa 301 305
+  shell: make fixperms
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  register: make_fixperms
+
+- name: RT Cron Jobs
+  template:
+    src: cron.j2
+    dest: "/etc/cron.d/rt"
+    owner: root
+    group: root
+    mode: '644'

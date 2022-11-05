@@ -1,0 +1,11 @@
+---
+# ansible-playbook roles/system_base/build-system_base.yml -e "target_hosts=host"
+- name: System Base
+  hosts: "{{ target_hosts }}"
+  become: yes
+
+  tasks:
+    - name: Install system_base
+      include_role:
+        name: system_base
+      tags: [system_base]

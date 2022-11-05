@@ -1,0 +1,1 @@
+# security_farm_soc_vars.yml contains variables for multiple roles; it must be passed manually to the playbook.

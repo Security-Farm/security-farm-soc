@@ -1,0 +1,11 @@
+mediawiki_vars_exist: Defined
+mediawiki_hosts: {{mediawiki_hosts}}
+mediawiki_hostname: {{mediawiki_hostname}} #eg mediawiki
+mediawiki_domain: {{mediawiki_domain}} #eg soc.lan
+
+#Developed for 1.38.4. MsUpload needs to be manually downloaded and plugged into ansible
+mediawiki_version: {{mediawiki_version}}
+
+mediawiki_database_name: {{mediawiki_database_name}} #eg mediawiki
+mediawiki_database_password: {{mediawiki_database_password}} #eg mediawikipassword
+mediawiki_database_user: {{mediawiki_database_user}} #eg mediawiki

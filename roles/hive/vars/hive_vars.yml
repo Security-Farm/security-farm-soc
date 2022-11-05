@@ -1,0 +1,8 @@
+---
+hive_vars_exist: True
+
+hive_hosts: {{hive_hosts}}
+hive_hostname: {{hive_hostname}} #eg hive
+hive_domain: {{hive_domain}} #eg soc.lan
+hive_cql_cluster_name: {{hive_cql_cluster_name}} #eg thp
+hive_cql_keyspace: {{hive_cql_keyspace}} #eg thehive
