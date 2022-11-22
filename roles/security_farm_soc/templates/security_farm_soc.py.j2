@@ -40,7 +40,7 @@ def backup():
         print('\nHive Backup Complete.')
     def mediawiki():
         print('\nBacking up Mediawiki\n')
-        os.system('mysqldump -u {{ mediawiki_database_user }} --password={{ mediawiki_database_password }} --databases {{ mediawiki_database_name }} > /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}.sql.%s' % date)
+        os.system('mysqldump -u {{ mediawiki_database_user }} --password="{{ mediawiki_database_password }}" --databases {{ mediawiki_database_name }} > /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}.sql.%s' % date)
         os.system('tar czf /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}files.tgz.%s /var/www/mediawiki/images/' % date)
         print('\nMediawiki Backup Complete.')
     def rocket():
@@ -53,7 +53,7 @@ def backup():
         print('\nRocket Backup Complete.')
     def rt():
         print('\nBacking up Request Tracker\n')
-        os.system('mysqldump -u {{ rt_database_user }} --password={{ rt_database_password }} --databases {{rt_database_name}} > /opt/security_farm/backup/rt/{{ rt_database_name }}.sql.%s' % date)
+        os.system('mysqldump -u {{ rt_database_user }} --password="{{ rt_database_password }}" --databases {{rt_database_name}} > /opt/security_farm/backup/rt/{{ rt_database_name }}.sql.%s' % date)
         os.system('tar czf /opt/security_farm/backup/rt/{{ rt_database_name }}files.tgz.%s {{ rt_installation_directory }}var/attachments/' % date)
         print('\nRT Backup Complete.')
     def remote_backup():
@@ -337,7 +337,7 @@ def restore():
             count += 1
         print('\nWhich backup would you like to use?')
         selection = mediawikiBackup[int(input())]
-        os.system('mysql -u {{ mediawiki_database_user }} --password={{ mediawiki_database_password }} --database={{ mediawiki_database_name }} < /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}.sql.%s' % selection)
+        os.system('mysql -u {{ mediawiki_database_user }} --password="{{ mediawiki_database_password }}" --database={{ mediawiki_database_name }} < /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}.sql.%s' % selection)
         os.system('rm -rf /opt/security_farm/backup/tmp/*')
         os.system('rm -rf /var/www/mediawiki/images/*')
         os.system('tar xzf /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}files.tgz.%s -C /opt/security_farm/backup/tmp/' % selection)
@@ -388,7 +388,7 @@ def restore():
             count += 1
         print('\nWhich backup would you like to use?')
         selection = rtBackup[int(input())]
-        os.system('mysql -u {{ rt_database_user }} --password={{ rt_database_password }} --database={{ rt_database_name }} < /opt/security_farm/backup/rt/{{ rt_database_name }}.sql.%s' % selection)
+        os.system('mysql -u {{ rt_database_user }} --password="{{ rt_database_password }}" --database={{ rt_database_name }} < /opt/security_farm/backup/rt/{{ rt_database_name }}.sql.%s' % selection)
         os.system('rm -rf /opt/security_farm/backup/tmp/*')
         os.system('rm -rf {{ rt_installation_directory }}var/attachments/*')
         os.system('tar xzf /opt/security_farm/backup/rt/{{ rt_database_name }}files.tgz.%s -C /opt/security_farm/backup/tmp/' % selection)
