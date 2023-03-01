@@ -1,7 +1,9 @@
 # Security Farm SOC
-https://securityfarm.net
+https://securityfarm.net  
 
-The Security Farm SOC consists of MediaWiki, Request Tracker, Rocket Chat and TheHive. Please look at the [documentation](https://github.com/Security-Farm/security-farm-soc/blob/main/roles/security_farm_soc/files/security_farm/security_farm_soc_documentation.pptx) for an overview. It is also availabe in /opt/security_farm/ or on the deployed wiki.
+The Security Farm SOC is not related to our company's service offerings. It was originally built for the Air Force as a stand-alone SOC to use in air-gapped environments.  
+
+The SFSOC consists of MediaWiki, Request Tracker, Rocket Chat and TheHive. Please look at the [documentation](https://github.com/Security-Farm/security-farm-soc/blob/main/roles/security_farm_soc/files/security_farm/security_farm_soc_documentation.pptx) for an overview. It is also availabe in /opt/security_farm/ or on the deployed wiki.
 
 # Quickstart
 [Download](https://securityfarm.net/wp-content/uploads/manual/security-farm-soc.v8.0.zip) the ESXi 6.5u3 Virtual Machine and deploy it.
