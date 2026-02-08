@@ -1,0 +1,66 @@
+---
+- name: iris directory
+  file:
+    path: /opt/iris
+    state: directory
+    owner: root
+    group: root
+    mode: '750'
+
+- name: Check if IRIS has already been downloaded
+  stat:
+    path: /root/iris.tar.gz
+  register: iris_exists
+
+- name: Download IRIS
+  ansible.builtin.get_url:
+    url: "https://github.com/dfir-iris/iris-web/archive/refs/tags/v{{ iris_version }}.tar.gz"
+    dest: /root/iris.tar.gz
+    mode: '440'
+  when: not iris_exists.stat.exists
+
+- name: Unarchive IRIS
+  ansible.builtin.unarchive:
+    src: /root/iris.tar.gz
+    dest: /opt/iris/
+    remote_src: yes
+    extra_opts:
+      - --strip-components=1
+  when: not iris_exists.stat.exists
+
+- name: Setup .env
+  template:
+    src: .env.model.j2
+    dest: "/opt/iris/.env"
+    owner: root
+    group: root
+    mode: '640'
+
+- name: Bind IRIS port to loopback only
+  ansible.builtin.replace:
+    path: /opt/iris/docker-compose.base.yml
+    regexp: '-\s*"\$\{INTERFACE_HTTPS_PORT:-443\}:\$\{INTERFACE_HTTPS_PORT:-443\}"'
+    replace: '- "127.0.0.1:${INTERFACE_HTTPS_PORT:-443}:${INTERFACE_HTTPS_PORT:-443}"'
+  when: iris_apache
+
+- name: Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/iris
+    state: present
+
+- name: Apache Portal Configuration
+  template:
+    src: iris.conf.j2
+    dest: "/etc/httpd/conf.d/iris.conf"
+    owner: root
+    group: root
+    mode: '644'
+  register: apache_configuration
+  when: iris_apache
+
+- name: Restart Apache # noqa 503
+  service:
+    name: "httpd"
+    state: restarted
+    enabled: yes
+  when: iris_apache and apache_configuration.changed

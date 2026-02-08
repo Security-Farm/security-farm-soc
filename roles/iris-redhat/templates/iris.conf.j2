@@ -1,0 +1,45 @@
+<VirtualHost *:80>
+   ServerName {{ iris_hostname }}.{{ security_farm_soc_domain }}
+   Redirect permanent / https://{{ iris_hostname }}.{{ security_farm_soc_domain }}/
+</VirtualHost>
+
+<VirtualHost *:443>
+  ServerName {{ iris_hostname }}.{{ security_farm_soc_domain }}
+
+  SSLEngine on
+  SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+  SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+
+  # Keep original host; ensure app knows original scheme was https
+  ProxyPreserveHost On
+  RequestHeader set X-Forwarded-Proto "https"
+  RequestHeader set X-Forwarded-Port  "443"
+
+  # If DFIR generates absolute URLs, these help too:
+  RequestHeader set X-Forwarded-Host "%{Host}e" env=Host
+
+  # Backend is HTTPS (DFIR nginx on loopback)
+  SSLProxyEngine On
+
+  # If DFIR backend cert is self-signed or name doesn't match 127.0.0.1, use these:
+  SSLProxyVerify none
+  SSLProxyCheckPeerName off
+  SSLProxyCheckPeerExpire off
+
+  # WebSocket upgrades (generic handling)
+  RewriteEngine On
+  RewriteCond %{HTTP:Upgrade} =websocket [NC]
+  RewriteCond %{HTTP:Connection} upgrade [NC]
+  RewriteRule ^/(.*)$ wss://127.0.0.1:{{ iris_port }}/$1 [P,L]
+
+  # Regular HTTP(S) proxy
+  ProxyPass        / https://127.0.0.1:{{ iris_port }}/ retry=0 timeout=600
+  ProxyPassReverse / https://127.0.0.1:{{ iris_port }}/
+
+  # Uploads / long requests (tune as needed)
+  ProxyTimeout 600
+  LimitRequestBody 0
+
+  ErrorLog logs/ssl_error_log
+  TransferLog logs/ssl_access_log
+</VirtualHost>

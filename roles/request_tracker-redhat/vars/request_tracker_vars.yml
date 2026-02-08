@@ -1,0 +1,23 @@
+request_tracker_vars_exist: Defined
+request_tracker_hosts: {{request_tracker_hosts}}
+request_tracker_hostname: {{request_tracker_hostname}} #eg rt
+request_tracker_domain: {{request_tracker_domain}} #eg soc.lan
+
+reboot_protection: True
+manual_fixdeps: False
+
+## Developed with 5.42.0
+perl: 5.42.0
+
+## Developed for 6.0.2
+rt_version: 6.0.2
+rt_installation_directory: /opt/rt6/
+
+#RT_SiteConfig.pm
+rt_database_name: {{rt_database_name}} #eg rt6
+rt_database_password: {{rt_database_password}} #eg rtpassword
+rt_database_type: mysql #only ./configure uses MariaDB type
+rt_database_user: {{rt_database_user}} #eg rt
+rt_log_to_syslog: info
+rt_log_to_stderr: warning
+rt_web_port: 443

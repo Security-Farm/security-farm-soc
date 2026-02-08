@@ -1,0 +1,13 @@
+---
+iris_vars_exist: True
+iris_hosts: {{iris_hosts}}
+iris_hostname: {{iris_hostname}}
+iris_domain: {{iris_domain}}
+iris_version: {{version}}
+iris_administrator_password: {{password}}
+iris_port: 443
+iris_apache: false #does not install apache. change port to 8443
+postgres_password: {{openssl rand -base64 100 | tr -dc '[:alnum:]' | head -c 60}}
+postgres_admin_password: {{openssl rand -base64 100 | tr -dc '[:alnum:]' | head -c 60}}
+iris_secret_key: {{openssl rand -base64 100 | tr -dc '[:alnum:]' | head -c 60}}
+iris_security_password_salt: {{openssl rand -base64 100 | tr -dc '[:alnum:]' | head -c 60}}

@@ -1,0 +1,587 @@
+#!Python3
+# Copyright: Security Farm PBC
+# GPLv3
+import re
+import os
+import time
+import subprocess
+
+#Functions
+def backup_directories():
+    print('Please do not manually add any files to the backup directories.')
+    if not os.path.exists('/opt/security_farm/backup/'):
+        print('Creating /opt/security_farm/backup/ directory')
+        os.mkdir('/opt/security_farm/backup')
+    if not os.path.exists('/opt/security_farm/backup/iris/'):
+        print('Creating /opt/security_farm/backup/iris/ directory')
+        os.mkdir('/opt/security_farm/backup/iris')
+    if not os.path.exists('/opt/security_farm/backup/mediawiki/'):
+        print('Creating /opt/security_farm/backup/mediawiki/ directory')
+        os.mkdir('/opt/security_farm/backup/mediawiki')
+    if not os.path.exists('/opt/security_farm/backup/rocketchat/'):
+        print('Creating /opt/security_farm/backup/rocketchat/ directory')
+        os.mkdir('/opt/security_farm/backup/rocketchat')
+    if not os.path.exists('/opt/security_farm/backup/rt/'):
+        print('Creating /opt/security_farm/backup/rt/ directory')
+        os.mkdir('/opt/security_farm/backup/rt')
+    if not os.path.exists('/opt/security_farm/backup/tmp/'):
+        print('Creating /opt/security_farm/backup/tmp/ directory')
+        os.mkdir('/opt/security_farm/backup/tmp/')
+def backup():
+    def iris():
+        print('\nBacking up IRIS\n')
+        os.system('docker exec iriswebapp_db pg_dump -U postgres iris_db | gzip > /opt/security_farm/backup/iris/iris_db_backup.gz.%s' % date)
+        print('\nIRIS Backup Complete.')
+    def mediawiki():
+        print('\nBacking up Mediawiki\n')
+        os.system('mysqldump -u {{ mediawiki_database_user }} --password="{{ mediawiki_database_password }}" --databases {{ mediawiki_database_name }} > /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}.sql.%s' % date)
+        os.system('tar czf /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}files.tgz.%s /var/www/mediawiki/images/' % date)
+        print('\nMediawiki Backup Complete.')
+    def rocket():
+        print('\nBacking up Rocket Chat\n')
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('mongodump --out /opt/security_farm/backup/tmp/rocketchat.dump -d rocketchat')
+        os.system('tar czf /opt/security_farm/backup/rocketchat/rocketchat.tgz.%s /opt/security_farm/backup/tmp/rocketchat.dump/' % date)
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('tar czf /opt/security_farm/backup/rocketchat/rocketchatfiles.tgz.%s /opt/rocket.chat/files/' % date)
+        print('\nRocket Backup Complete.')
+    def rt():
+        print('\nBacking up Request Tracker\n')
+        os.system('mysqldump -u {{ rt_database_user }} --password="{{ rt_database_password }}" --databases {{rt_database_name}} > /opt/security_farm/backup/rt/{{ rt_database_name }}.sql.%s' % date)
+        os.system('tar czf /opt/security_farm/backup/rt/{{ rt_database_name }}files.tgz.%s {{ rt_installation_directory }}var/attachments/' % date)
+        print('\nRT Backup Complete.')
+    def remote_backup():
+        print('\nThis will backup to ~/sf_backup on the target.')
+        print('\nTarget IP?')
+        target = str(input())
+        print('\nUser?')
+        user = str(input())
+        if not os.path.exists('/root/.ssh/id_rsa.pub'):
+            print('\nGenerating key, accept all defaults with no passphrase\n')
+            os.system('ssh-keygen')
+        print('\nPlease wait and enter ssh password if prompted.')
+        os.system('ssh-copy-id %s@%s' % (user, target))
+        print('\nCreating directories if they do not exist:')
+        os.system('ssh %s@%s \'mkdir ~/sf_backup ~/sf_backup/iris ~/sf_backup/mediawiki ~/sf_backup/rocketchat ~/sf_backup/rt\'' % (user, target))
+        print('\nCopying IRIS:')
+        os.system('scp -r /opt/security_farm/backup/iris/*.%s %s@%s:~/sf_backup/iris/' % (date, user, target))
+        print('\nCopying Mediawiki:')
+        os.system('scp -r /opt/security_farm/backup/mediawiki/*.%s %s@%s:~/sf_backup/mediawiki/' % (date, user, target))
+        print('\nCopying Rocket:')
+        os.system('scp -r /opt/security_farm/backup/rocketchat/*.%s %s@%s:~/sf_backup/rocketchat/' % (date, user, target))
+        print('\nCopying Request Tracker:')  
+        os.system('scp -r /opt/security_farm/backup/rt/*.%s %s@%s:~/sf_backup/rt/' % (date, user, target))
+    #Backup Main
+    date = time.strftime('%Y-%m-%d')
+    os.system('clear')
+    backup_directories()
+    print('\nBackup:')
+    print('=======')
+    print('1: Local Backup')
+    print('2: Remote Backup')
+    print('3: Local and Remote Backup')
+    print('4: Exit')
+    print("\nPlease monitor each stage of the output for errors in the backup process.")
+    print('\nChoice:', end='')
+    backupSelection = int(input())                  
+    if(backupSelection == 1):
+        stop_services()
+        iris()
+        mediawiki()
+        rocket()
+        rt()
+        start_services()
+    if(backupSelection == 2):
+        print('\nThis will only copy database backups created today.\n')
+        input('Press enter to continue: ')
+        remote_backup()
+        print('\nSCP Complete')
+    if(backupSelection == 3):
+        stop_services()
+        iris()
+        mediawiki()
+        rocket()
+        rt()
+        start_services()
+        remote_backup()
+    if(backupSelection == 4):
+        None
+    print('Returning to main menu.')
+    input('Press enter to continue: ')
+def configure():
+    os.system('clear')
+    print('\nDo you want to generate a new self-signed certificate for Apache? [yes]: ', end="")
+    print('')
+    if input(): 
+        None
+    else:
+        os.system('openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/pki/tls/private/localhost.key -out /etc/pki/tls/certs/localhost.crt -subj "/C=US/ST=Colorado/L=Colorado Springs/O=Security Farm/CN=*.soc.lan"')
+
+    shell = subprocess.Popen(["ip", "a"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('ens18:')
+    print('\nNetwork Adapters:')
+    print('=================')
+    print('\n' + stdout)
+    if (regex.search(stdout)):
+        print('\nVerify the default interface.\nInput a different interface or press enter to continue [ens18]: ', end='')
+        interface = input() or "ens18"
+    else:
+        print('\nPlease choose an interface, eg "ens18": ', end='')
+        interface = input()
+    os.system('clear')
+    print('\nCurrent Configuration:')
+    print('======================')
+    os.system("cat /etc/NetworkManager/system-connections/%s.nmconnection" % interface)
+    
+    print('\nEnter the IP (eg 192.168.0.2): ', end='')
+    ipadd = str(input())
+    print('Enter the Prefix (eg 24): ', end='')
+    prefix = str(input())
+    print('Enter the Gateway IP: ', end='')
+    gateway = str(input())
+    print('Enter the DNS IP (optional): ', end='')
+    dns = str(input())
+    print('Enter the IP of your NTP Server: ', end='')
+    ntpadd = str(input())
+    
+    print('\nNote: Adjusting the domain name for the system/services is done with ansible.\n')
+    print('The system will now be configured. Press enter to continue: ', end='')
+    input()
+
+    cmd = [
+        "nmcli", "connection", "modify", interface,
+        "ipv4.method", "manual",
+        "ipv4.addresses", f"{ipadd}/{prefix}",
+        "ipv4.gateway", gateway,
+        "ipv4.dns", dns,
+        "ipv4.dns-search", "{{ security_farm_soc_domain }}"
+    ]
+    subprocess.run(cmd, check=True)
+
+    file = open('/var/named/{{ security_farm_soc_domain }}.zone', 'w')
+    file.write('$TTL 86400\n')
+    file.write('@\tIN\tSOA\t{{ security_farm_soc_domain }}.\tadmin.{{ security_farm_soc_domain }}. (\n')
+    file.write('\t1\t; Serial\n')
+    file.write('\t21600\t; refresh after 6 hours\n')
+    file.write('\t3600\t; retry after  hour\n')
+    file.write('\t604800\t; expire after 1 week\n')
+    file.write('\t86400\t; minimum TTL of 1 day\n')
+    file.write(')\n')
+    file.write('\tIN\tNS\tportal.{{ security_farm_soc_domain }}.\n')
+    file.write('; Replace IP addresses with current IP address of this machine\n')
+    file.write('{{ iris_hostname }}\tIN\tA\t%s\n' % ipadd)
+    file.write('{{ mediawiki_hostname }}\tIN\tA\t%s\n' % ipadd)
+    file.write('{{ portal_hostname }}\tIN\tA\t%s\n' % ipadd)
+    file.write('{{ rocket_hostname }}\tIN\tA\t%s\n' % ipadd)
+    file.write('{{ request_tracker_hostname }}\tIN\tA\t%s\n' % ipadd)
+    file.close()
+
+    file = open('/etc/chrony.conf', 'w')
+    file.write('server %s iburst\n' % ntpadd)
+    file.write('driftfile /var/lib/chrony/drift\n')
+    file.write('makestep 1.0 3\n')
+    file.write('rtcsync\n')
+    file.write('logdir /var/log/chrony\n')
+    file.close()
+
+    print('\n\nIf you would like the dns server on this machine to resolve more than')
+    print('just the services it hosts, edit /etc/named.conf and look for the comment.')
+    print('I suspect if you\'re going to do this, however, it is more likely that you\'ll')
+    print('just add the fdqn of the services on this machine to that server instead.\n')
+
+    print('\nSetup complete; press enter to reboot for the changes to take effect or type no.')
+    if input(): 
+        None
+    else:
+        os.system('reboot')
+def lvm():
+    os.system('clear')
+    print('\nThis will walk you through resizing your hard drive.')
+    print('Make sure you are comfortable performing these operations.')
+    print('Poweroff the virtual machine and delete any snapshots.')
+    print('Increase the hard drive size and power the VM back on.')
+    print('Open another terminal window and follow along.')
+    print('\nPress enter to continue: ', end='');input()
+    print('\nResult of fdisk -l:')
+    print('============================')
+    os.system('fdisk -l')
+    print('\nEnter the Linux LVM device you are going to resize [/dev/sda3]:', end='')
+    device = input() or "/dev/sda3"
+    disk, partition = re.match(r"^(.*?)(\d+)$", device).groups()
+    os.system('clear')
+    print('At your bash prompt:')
+    print('growpart %s %s' % (disk,partition))
+    print('\nPress enter to continue: ', end='');input()
+    os.system('clear')
+    print('Now:')
+    print('pvresize %s%s' % (disk,partition))
+    print('\nPress enter to continue: ', end='');input()
+    os.system('clear')
+    print('\nResult of lvdisplay:')
+    print('====================')
+    os.system('lvdisplay')
+    print('====================')
+    print('\nNow select the logical volume to extend [/dev/almalinux/root]: ', end='')
+    logical_volume = input() or "/dev/almalinux/root"
+    os.system('clear')
+    print('Finally:')
+    print('lvextend -r -l +100%%FREE %s' % logical_volume)
+    print('\nAll Done!')
+    input('Press enter to continue: ')
+def restore():
+    def iris():
+        print('\nRestoring IRIS\n')
+        irisBackup = os.listdir("/opt/security_farm/backup/iris/")
+        count = 0
+        for entry in irisBackup:
+            irisBackup[count] = (entry.split("."))[2]
+            count += 1
+        #Deduplicate
+        irisBackup = set(irisBackup)
+        irisBackup = list(irisBackup)
+        count = 0
+        for entry in irisBackup:
+            print(count, ": ", entry)
+            count += 1
+        print('\nWhich backup would you like to use?')
+        selection = irisBackup[int(input())]
+        os.system('docker exec -it iriswebapp_db psql -U postgres -c "DROP DATABASE iris_db;"')
+        os.system('docker exec -it iriswebapp_db psql -U postgres -c "CREATE DATABASE iris_db;"')
+        os.system('zcat /opt/security_farm/backup/iris/iris_db_backup.gz.%s | docker exec -i iriswebapp_db psql -U postgres -d iris_db' % selection)
+        print('IRIS Restoration Complete.')
+    def mediawiki():
+        print('\nRestoring Mediawiki\n')
+        mediawikiBackup = os.listdir("/opt/security_farm/backup/mediawiki/")
+        count = 0
+        for entry in mediawikiBackup:
+            mediawikiBackup[count] = (entry.split("."))[2]
+            count += 1
+        #Deduplicate
+        mediawikiBackup = set(mediawikiBackup)
+        mediawikiBackup = list(mediawikiBackup)
+        count = 0
+        for entry in mediawikiBackup:
+            print(str(count) + ': ' + entry)
+            count += 1
+        print('\nWhich backup would you like to use?')
+        selection = mediawikiBackup[int(input())]
+        os.system('mysql -u {{ mediawiki_database_user }} --password="{{ mediawiki_database_password }}" --database={{ mediawiki_database_name }} < /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}.sql.%s' % selection)
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('rm -rf /var/www/mediawiki/images/*')
+        os.system('tar xzf /opt/security_farm/backup/mediawiki/{{ mediawiki_database_name }}files.tgz.%s -C /opt/security_farm/backup/tmp/' % selection)
+        os.system("mv /opt/security_farm/backup/tmp/var/www/mediawiki/images/* /var/www/mediawiki/images/")
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('chown -R apache:apache /var/www/mediawiki/images/*')
+        print('Mediawiki Restoration Complete.')
+    def rocket():
+        print('\nRestoring Rocket\nThis will purge the existing databse.\n')
+        rocketBackup = os.listdir("/opt/security_farm/backup/rocketchat/")
+        count = 0
+        for entry in rocketBackup:
+            rocketBackup[count] = (entry.split("."))[2]
+            count += 1
+        #Deduplicate
+        rocketBackup = set(rocketBackup)
+        rocketBackup = list(rocketBackup)
+        count = 0
+        for entry in rocketBackup:
+            print(str(count) + ': ' + entry)
+            count += 1
+        print('\nWhich backup would you like to use?')
+        selection = rocketBackup[int(input())]
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('tar xzf /opt/security_farm/backup/rocketchat/rocketchat.tgz.%s -C /opt/security_farm/backup/tmp/' % selection)
+        os.system('mongosh rocketchat --eval "db.dropDatabase()"')
+        os.system('mongorestore -d rocketchat /opt/security_farm/backup/tmp/opt/security_farm/backup/tmp/rocketchat.dump/rocketchat/')
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('rm -rf /opt/rocket.chat/files/*')
+        os.system('tar xzf /opt/security_farm/backup/rocketchat/rocketchatfiles.tgz.%s -C /opt/security_farm/backup/tmp/' % selection)
+        os.system("mv /opt/security_farm/backup/tmp/opt/rocket.chat/files/* /opt/rocket.chat/files/")
+        os.system('chown -R rocketchat:rocketchat /opt/rocket.chat/files/*')
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        print('Rocket Restoration Complete.')
+    def rt():
+        print('\nRestoring Request Tracker\n')
+        rtBackup = os.listdir("/opt/security_farm/backup/rt/")
+        count = 0
+        for entry in rtBackup:
+            rtBackup[count] = (entry.split("."))[2]
+            count += 1
+        #Deduplicate
+        rtBackup = set(rtBackup)
+        rtBackup = list(rtBackup)
+        count = 0
+        for entry in rtBackup:
+            print(str(count) + ': ' + entry)
+            count += 1
+        print('\nWhich backup would you like to use?')
+        selection = rtBackup[int(input())]
+        os.system('mysql -u {{ rt_database_user }} --password="{{ rt_database_password }}" --database={{ rt_database_name }} < /opt/security_farm/backup/rt/{{ rt_database_name }}.sql.%s' % selection)
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('rm -rf {{ rt_installation_directory }}var/attachments/*')
+        os.system('tar xzf /opt/security_farm/backup/rt/{{ rt_database_name }}files.tgz.%s -C /opt/security_farm/backup/tmp/' % selection)
+        os.system("mv /opt/security_farm/backup/tmp{{ rt_installation_directory }}var/attachments/* {{ rt_installation_directory }}var/attachments/")
+        os.system('rm -rf /opt/security_farm/backup/tmp/*')
+        os.system('chown -R apache:apache {{ rt_installation_directory }}var/attachments/*')
+        print('Request Tracker Restoration Complete.')
+    def remote_import():
+        print('\nThis will import from ~/sf_backup on the target.')
+        print('\nTarget IP?')
+        target = str(input())
+        print('\nUser?')
+        user = str(input())
+        if not os.path.exists('/root/.ssh/id_rsa.pub'):
+            print('\nGenerating key, accept all defaults with no passphrase\n')
+            os.system('ssh-keygen')
+        print('\nPlease wait and enter ssh password if prompted.\n')
+        os.system('ssh-copy-id %s@%s' % (user, target))
+        print('\nEnter date (yyyy-mm-dd) of backup to import:')
+        date = str(input())
+        print('\nCopying IRIS:')
+        os.system('scp -r %s@%s:~/sf_backup/iris/*.%s /opt/security_farm/backup/iris/' % (user, target, date))
+        print('\nCopying Mediawiki:')
+        os.system('scp -r %s@%s:~/sf_backup/mediawiki/*.%s /opt/security_farm/backup/mediawiki/' % (user, target, date))
+        print('\nCopying Rocket:')
+        os.system('scp -r %s@%s:~/sf_backup/rocketchat/*.%s /opt/security_farm/backup/rocketchat/' % (user, target, date))
+        print('\nCopying Request Tracker:')  
+        os.system('scp -r %s@%s:~/sf_backup/rt/*.%s /opt/security_farm/backup/rt/' % (user, target, date))
+        print('\nRemote Backups Imported. Returning to main menu.')
+    #Main Restore
+    os.system('clear')
+    backup_directories()
+    print('\nRestore:')
+    print('========')
+    print('1: Restore IRIS')
+    print('2: Restore Mediawiki')
+    print('3: Restore Rocket')
+    print('4: Restore RT')
+    print('5: Restore All')
+    print('6: Import Backups')
+    print('7: Exit')
+    print("\nPlease monitor each stage of the output for errors in the restore process.\nServices will be stopped to perform backup.")
+    print('\nChoice:', end='')
+    restoreSelection = int(input())                  
+    if(restoreSelection == 1):
+        stop_services()
+        iris()
+        start_services()
+    if(restoreSelection == 2):
+        stop_services()
+        mediawiki()
+        start_services()
+    if(restoreSelection == 3):
+        stop_services()
+        rocket()
+        start_services()
+    if(restoreSelection == 4):
+        stop_services()
+        rt()
+        start_services()
+    if(restoreSelection == 5):
+        stop_services()
+        iris()
+        mediawiki()
+        rocket()
+        rt()
+        start_services()
+    if(restoreSelection == 6):
+        remote_import()
+    if(restoreSelection == 7):
+        None
+    input('Press enter to continue: ')
+def start_services():
+    print('\nStarting Services')
+    os.system('systemctl start rocketchat')
+    os.system('systemctl start docker')
+    os.system('docker compose -f /opt/iris/docker-compose.yml start app worker')
+    os.system('systemctl start httpd')
+    print('Services Started')
+def status():
+    os.system('clear')
+
+    print('\nFirewall Configuration:')
+    print('=======================')
+    os.system("iptables -nvL INPUT")
+    print('\nPorts needed: 22/tcp, 53/udp, 80/tcp, 443/tcp')
+    input('\nPress enter to continue: ')
+
+    os.system('clear')
+    print('\nServices status:')
+    print('================')
+    #Chrony
+    shell = subprocess.Popen(["systemctl", "status", "chronyd"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    chronyd = regex.search(stdout).group()
+    chronyd = chronyd.replace('Active:', 'Chronyd:   ')
+    print(chronyd, end='')
+    #Docker
+    shell = subprocess.Popen(["systemctl", "status", "docker"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    docker = regex.search(stdout).group()
+    docker = docker.replace('Active:', 'Docker:    ')
+    print(docker, end='')
+    #HTTPD
+    shell = subprocess.Popen(["systemctl", "status", "httpd"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    httpd = regex.search(stdout).group()
+    httpd = httpd.replace('Active:', 'HTTPD:     ')
+    print(httpd, end='')
+    #MariaDB
+    shell = subprocess.Popen(["systemctl", "status", "mariadb"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    mariadb = regex.search(stdout).group()
+    mariadb = mariadb.replace('Active:', 'MariaDB:   ')
+    print(mariadb, end='')
+    #MongoDB
+    shell = subprocess.Popen(["systemctl", "status", "mongod"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    mongod = regex.search(stdout).group()
+    mongod = mongod.replace('Active:', 'Mongod:    ')
+    print(mongod, end='')
+    #Named
+    shell = subprocess.Popen(["systemctl", "status", "named"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    named = regex.search(stdout).group()
+    named = named.replace('Active:', 'Named:     ')
+    print(named, end='')
+    #Rocket
+    shell = subprocess.Popen(["systemctl", "status", "rocketchat"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    rocketchat = regex.search(stdout).group()
+    rocketchat = rocketchat.replace('Active:', 'RocketChat:')
+    print(rocketchat, end='')
+    #SSHD
+    shell = subprocess.Popen(["systemctl", "status", "sshd"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    stdout, stderr = shell.communicate()
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    regex = re.compile('Active:.*\n')
+    sshd = regex.search(stdout).group()
+    sshd = sshd.replace('Active:', 'SSHD:      ')
+    print(sshd, end='')
+   
+    print('\n\nThis script will now attempt service recovery if needed.\nShould that fail, please run the configuration again.')
+    input('\nPress enter to continue: ')
+    
+    #Recovery
+    regex = re.compile(r'\bactive\b')
+    restart_needed = False
+
+    if not(regex.search(docker)):
+        restart_needed = True
+        print('\nDocker has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart docker')
+        os.system('systemctl enable docker')
+        print('Restart Attempted')
+    if not(regex.search(chronyd)):
+        restart_needed = True
+        print('\nChronyd has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart chronyd')
+        os.system('systemctl enable chronyd')
+        print('Restart Attempted')
+    if not(regex.search(httpd)):
+        restart_needed = True
+        print('\nHTTPD has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart httpd')
+        os.system('systemctl enable httpd')
+        print('Restart Attempted')
+    if not(regex.search(mariadb)):
+        restart_needed = True
+        print('\nMariaDB has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart mariadb')
+        os.system('systemctl enable mariadb')
+        print('Restart Attempted')
+    if not(regex.search(mongod)):
+        restart_needed = True
+        print('\nMongod has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart mongod')
+        os.system('systemctl enable mongod')
+        print('Restart Attempted')
+    if not(regex.search(named)):
+        restart_needed = True
+        print('\nDNS has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart named')
+        os.system('systemctl enable named')
+        print('Restart Attempted')
+    if not(regex.search(rocketchat)):
+        restart_needed = True
+        print('\nRocketChat has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart rocketchat')
+        os.system('systemctl enable rocketchat')
+        print('Restart Attempted')
+    if not(regex.search(sshd)):
+        restart_needed = True
+        print('\nSSHD has failed, press enter to attempt restart.', end='')
+        input()
+        os.system('systemctl restart sshd')
+        os.system('systemctl enable sshd')
+        print('Restart Attempted')
+    if restart_needed:
+        print('\nReturning to main menu.')
+    else:
+        print('\nAll services were active; no recovery needed. Returning to Main Menu')
+    input('Press enter to continue: ')
+def stop_services():
+    print('\nrocketchat, IRIS, and httpd are stopping')
+    os.system('docker compose -f /opt/iris/docker-compose.yml stop app worker')
+    os.system('systemctl stop rocketchat')
+    os.system('systemctl stop httpd')
+#Menu
+while True:
+    os.system('clear')
+    print('\nSecurity Farm SOC Maintenance')
+    print('=============================')
+    print('1: System Status')
+    print('2: Configure System')
+    print('3: Resize LVM')
+    print('4: Backup')
+    print('5: Restore')
+    print('6: Exit')
+    print('\nChoice:', end='')
+    selection = int(input())
+    if(selection == 1):
+        status()
+    if(selection == 2):
+        configure()
+    if(selection == 3):
+        lvm()
+    if(selection == 4):
+        backup()
+    if(selection == 5):
+        restore()
+    if(selection == 6):
+        print('')
+        print('Thanks for choosing \033]8;;https://www.securityfarm.net\033\\https://www.securityfarm.net\033]8;;\033\\.')
+        print('')
+        exit()

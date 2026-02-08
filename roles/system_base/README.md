@@ -3,7 +3,7 @@ system_base
 
 Configure target hosts to the baseline configuration.
 
-Currently enables automatic security updates but some of these updates may need a manual reboot to take effect. On CentOS 7 run `needs-restarting -r` and on CentOS 8 `dnf needs-restarting` to check.
+Currently enables automatic security updates but some of these updates may need a manual reboot to take effect. Use `dnf needs-restarting` to check.
 
 Requirements
 ------------

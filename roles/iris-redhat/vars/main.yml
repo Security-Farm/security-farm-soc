@@ -1,0 +1,2 @@
+---
+# vars file for role_template. Leave in place if you're going to put a vars template in this folder so it is not automatically processed by ansible.

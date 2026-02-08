@@ -1,0 +1,73 @@
+# Security Farm-----------------------------
+security_farm_soc_vars_exist: Defined
+security_farm_soc_hosts: &security_farm_soc_hosts portal.soc.lan
+portal_hostname: portal
+security_farm_soc_domain: &security_farm_soc_domain soc.lan
+reboot_protection: False
+
+# IRIS-----------------------------------------------
+iris_vars_exist: True
+iris_hosts: *security_farm_soc_hosts
+iris_version: 2.4.27
+iris_hostname: iris
+iris_domain: *security_farm_soc_domain
+iris_administrator_password: irispassword
+iris_port: 8443
+iris_apache: true #does not install apache. change port to 8443
+postgres_password: irispassword
+postgres_admin_password: irispassword
+iris_secret_key: irispassword
+iris_security_password_salt: irispassword
+
+# MediaWiki------------------------------------------
+mediawiki_vars_exist: Defined
+mediawiki_hosts: *security_farm_soc_hosts
+mediawiki_hostname: mediawiki
+mediawiki_domain: *security_farm_soc_domain
+
+## Developed for 1.45.1
+mediawiki_version: 1.45.1
+
+mediawiki_database_name: mediawiki
+mediawiki_database_password: mediawikipassword
+mediawiki_database_user: mediawiki
+
+
+# Request Tracker------------------------------------
+request_tracker_vars_exist: Defined
+request_tracker_hosts: *security_farm_soc_hosts
+request_tracker_hostname: rt
+request_tracker_domain: *security_farm_soc_domain
+
+manual_fixdeps: False
+
+## Developed with 5.42.0
+perl: 5.42.0
+
+## Developed for 6.0.2
+rt_version: 6.0.2
+rt_installation_directory: /opt/rt6/
+
+## RT_SiteConfig.pm
+rt_database_name: rt6
+rt_database_password: rtpassword
+rt_database_type: mysql
+rt_database_user: rt
+rt_log_to_syslog: info
+rt_log_to_stderr: warning
+rt_web_port: 443
+
+
+# Rocket Chat----------------------------------------
+rocket_vars_exist: Defined
+rocket_hosts: *security_farm_soc_hosts
+rocket_hostname: rocket
+rocket_domain: *security_farm_soc_domain
+
+
+## Developed for 8.0.1
+rocket_version: 8.0.1
+mongodb_version: "8.2"
+releasever: 9
+node_js_version: 22.16.0
+deno: 1.43.5

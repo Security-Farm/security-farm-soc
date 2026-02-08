@@ -1,6 +1,6 @@
 ---
-- name: CentOS
+- name: Alma
   include_tasks:
-    file: centos/centos_main.yml
+    file: alma/alma_main.yml
   tags: [system_base]
-  when: ansible_facts.distribution == 'CentOS'
+  when: ansible_facts.distribution == 'AlmaLinux'

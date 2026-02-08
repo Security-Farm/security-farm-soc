@@ -1,0 +1,37 @@
+---
+- name: Set Hostname
+  include_tasks:
+    file: alma_hostname.yml
+    apply:
+      tags: [hostname]
+  tags: [hostname]
+
+- name: Install iptables
+  include_tasks:
+    file: alma_firewall.yml
+    apply:
+      tags: [firewall]
+  tags: [firewall]
+
+- name: Alma 10
+  block:
+    - name: Baseline Packages
+      include_tasks:
+        file: alma_10_baseline.yml
+        apply:
+          tags: [baseline]
+      tags: [baseline]
+    - name: Automatic Updates
+      include_tasks:
+        file: alma_10_updates.yml
+        apply:
+          tags: [updates]
+      tags: [updates]
+  when: ansible_facts.distribution_major_version == "10"
+
+#- name: Add Users
+#  include_tasks:
+#    file: alma_users.yml
+#    apply:
+#      tags: [users]
+#  tags: [users]

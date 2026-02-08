@@ -16,27 +16,27 @@
         name: system_base
       tags: [system_base]
 
-    - name: Install hive
-      include_role:
-        name: hive
-      tags: [hive]
-
     - name: Install mediawiki
       include_role:
-        name: mediawiki
+        name: mediawiki-redhat
       tags: [mediawiki]
 
     - name: Install request_tracker
       include_role:
-        name: request_tracker
+        name: request_tracker-redhat
       tags: [request_tracker]
 
     - name: Install rocket_chat
       include_role:
-        name: rocket_chat
+        name: rocket_chat-redhat
       tags: [rocket_chat]
+
+    - name: Install iris
+      include_role:
+        name: iris-redhat
+      tags: [iris]
 
     - name: Configure security_farm_soc
       include_role:
-        name: security_farm_soc
+        name: security_farm_soc-redhat
       tags: [security_farm_soc]

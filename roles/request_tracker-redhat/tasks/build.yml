@@ -1,0 +1,88 @@
+---
+- name: Check if RT has been installed
+  stat:
+    path: "{{ rt_installation_directory }}local/"
+  register: rt_installed
+
+- name: Pre-Configure RT
+  shell: >2 # noqa 305
+    PERL="/opt/perl5/perls/perl-{{ perl }}/bin/perl"
+    ./configure
+    --prefix={{ rt_installation_directory }}
+    --with-db-type=MariaDB
+    --with-web-user=apache
+    --with-web-group=apache
+    --with-attachment-store=disk
+    --enable-externalauth
+    --enable-graphviz
+    --enable-gpg
+    --enable-smime
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists
+  register: preconfigure_rt
+
+- name: Preconfiguration Output
+  debug:
+    var: preconfigure_rt.stdout_lines
+  when: not rt_installed.stat.exists
+
+- name: Make Directories # noqa 305
+  shell: make dirs
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists
+  register: make_dirs
+
+- name: Make Dirs Output
+  debug:
+    var: make_dirs.stdout_lines
+  when: not rt_installed.stat.exists
+
+- name: Fixdeps Pause
+  pause:
+    prompt: Run manual fixdeps at this point (see build.yml). Press return to continue. Press Ctrl+c and then "a" to abort.
+  when: not rt_installed.stat.exists and manual_fixdeps
+
+- name: Install DBD::mysql@4.052 for MariaDB Compatability # noqa 305
+  shell: '/opt/perl5/perls/perl-5.42.0/bin/perl /opt/perl5/bin/cpanm --sudo "DBD::mysql@4.052"'
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists and not manual_fixdeps
+
+- name: Force install Net::SSLeay # noqa 305
+  shell: '/opt/perl5/perls/perl-5.42.0/bin/perl /opt/perl5/bin/cpanm --sudo --force Net::SSLeay'
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists and not manual_fixdeps
+
+- name: Make Fixdeps - Can take >40m # noqa 305
+  shell: 'make fixdeps RT_FIX_DEPS_CMD="/opt/perl5/perls/perl-5.42.0/bin/perl /opt/perl5/bin/cpanm --sudo"'
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not rt_installed.stat.exists and not manual_fixdeps
+  register: make_fixdeps
+  async: 5400
+  poll: 60
+
+- name: Make Fixdeps Output
+  debug:
+    var: make_fixdeps.stdout_lines
+  when: not rt_installed.stat.exists and not manual_fixdeps
+
+- name: Check if Make Install has been run
+  stat:
+    path: "{{ rt_installation_directory }}etc/RT_Config.pm"
+  register: make_install_done
+
+- name: Make Install # noqa 305
+  shell: make install
+  args:
+    chdir: "/root/rt-{{ rt_version }}"
+  when: not make_install_done.stat.exists
+  register: make_install
+
+- name: Make Install Output
+  debug:
+    var: make_install.stdout_lines
+  when: not make_install_done.stat.exists

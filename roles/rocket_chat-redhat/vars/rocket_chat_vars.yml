@@ -1,0 +1,12 @@
+rocket_vars_exist: Defined
+rocket_hosts: {{rocket_hosts}}
+rocket_hostname: {{rocket_hostname}} #eg rocket
+rocket_domain: {{rocket_domain}} #eg soc.lan
+reboot_protection: False
+
+## Developed for 8.0.1
+rocket_version: 8.0.1
+mongodb_version: "8.2"
+releasever: 9
+node_js_version: 22.16.0
+deno: 1.43.5
