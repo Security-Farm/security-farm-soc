@@ -115,7 +115,7 @@ def configure():
     if input(): 
         None
     else:
-        os.system('openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/pki/tls/private/localhost.key -out /etc/pki/tls/certs/localhost.crt -subj "/C=US/ST=Colorado/L=Colorado Springs/O=Security Farm/CN=*.soc.lan"')
+        os.system('openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/pki/tls/private/localhost.key -out /etc/pki/tls/certs/localhost.crt -subj "/C=US/ST=Colorado/L=Colorado Springs/O=Security Farm/CN=*.{{ security_farm_soc_domain }}"')
 
     shell = subprocess.Popen(["ip", "a"],shell=False,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     stdout, stderr = shell.communicate()

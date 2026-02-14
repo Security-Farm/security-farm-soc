@@ -44,6 +44,14 @@
     group: apache
     mode: '644'
 
+- name: Copy Portal Index
+  template:
+    src: portal.conf.j2
+    dest: "/var/www/portal/index.html"
+    owner: apache
+    group: apache
+    mode: '644'
+
 - name: Apache Portal Configuration
   template:
     src: portal.conf.j2
