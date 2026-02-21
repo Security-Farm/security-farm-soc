@@ -3,6 +3,8 @@ https://securityfarm.net
 
 The Security Farm SOC consists of MediaWiki, Request Tracker, Rocket Chat and IRIS. Please look at the [documentation](https://github.com/Security-Farm/security-farm-soc/blob/main/roles/security_farm_soc/files/security_farm/security_farm_soc_documentation.pptx) for an overview. It is also availabe in /opt/security_farm/ or on the deployed wiki.
 
+Though Security Farm prefers to work with Debian, this project continues to run on Alma (RHEL) for government compliance reasons as it was orignally developed as a project for the Air Force.
+
 # Quickstart
 Login to the host and run `security_farm_soc`, this will configure the IP amongst other things.
 
